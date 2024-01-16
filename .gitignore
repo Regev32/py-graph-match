@@ -134,3 +134,10 @@ dmypy.json
 # behave
 pretty.output
 allure_report/
+
+# graph output dirs
+output/
+results/
+
+lol_graph.c
+cutils.c

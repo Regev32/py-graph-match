@@ -26,7 +26,18 @@
 
 """The setup script."""
 
-from setuptools import setup, find_packages
+import sys
+from setuptools import setup, Extension, find_packages
+from Cython.Build import cythonize
+import numpy
+
+
+def build_include_dirs():
+    platform = sys.platform
+    if platform == "darwin":  # MacOS
+        return [numpy.get_include(), "/usr/local/opt/libomp/include"]
+    return [numpy.get_include()]
+
 
 with open("README.md") as readme_file:
     readme = readme_file.read()
@@ -41,7 +52,7 @@ with open("requirements-tests.txt") as requirements_file:
     test_requirements = requirements_file.read().split("\n")
 
 setup(
-    name="my_project_template",
+    name="py-graph-match",
     version="0.0.1",
     author="Pradeep Bashyal",
     author_email="pbashyal@nmdp.org",
@@ -55,16 +66,33 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
     ],
-    description="Python Boilerplate contains all the boilerplate you need to create a Python package.",
+    description="Graph Match",
     install_requires=requirements,
     license="LGPL 3.0",
     long_description=readme + "\n\n" + history,
     long_description_content_type="text/markdown",
     include_package_data=True,
-    keywords="my_project_template",
-    packages=find_packages(include=["my_project_template"]),
+    keywords="Graph,HLA",
+    packages=find_packages(
+        include=["grma", "grma.donorsgraph", "grma.match", "grma.utilities"]
+    ),
     test_suite="tests",
     tests_require=test_requirements,
-    url="https://github.com/nmdp-bioinformatics/my_project_template",
+    url="https://github.com/nmdp-bioinformatics/",
     zip_safe=False,
+    include_dirs=build_include_dirs(),
+    ext_modules=cythonize(
+        [
+            Extension(
+                "grma.utilities.cutils",
+                ["grma/utilities/cutils.pyx"],
+                define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
+            ),
+            Extension(
+                "grma.match.lol_graph",
+                ["grma/match/lol_graph.pyx"],
+                define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
+            ),
+        ]
+    ),
 )
