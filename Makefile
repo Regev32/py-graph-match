@@ -89,7 +89,6 @@ docker: docker-build ## build a docker image and run the service
 
 install: clean ## install the package to the active Python's site-packages
 	pip install --upgrade pip
-	pip install git+https://github.com/nmdp-bioinformatics/py-graph-imputation
 	pip install -r requirements.txt
 	pip install -r requirements-tests.txt
 	pip install -r requirements-dev.txt
