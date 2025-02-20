@@ -52,8 +52,8 @@ with open("requirements-tests.txt") as requirements_file:
     test_requirements = requirements_file.read().split("\n")
 
 setup(
-    name="py-graph-match",
-    version="0.0.8",
+    name="py-graph-match-temp",
+    version="0.0.9",
     author="Pradeep Bashyal",
     author_email="pbashyal@nmdp.org",
     python_requires=">=3.8",
