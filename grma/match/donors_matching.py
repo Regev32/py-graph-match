@@ -39,6 +39,8 @@ def _init_results_df(donors_info):
     fields_in_results = {
         "Patient_ID": [],
         "Donor_ID": [],
+        "GvH_Mismatches": [],
+        "HvG_Mismatches": [],
         "Number_Of_Mismatches": [],
         "Matching_Probability": [],
         "Match_Probability_A_1": [],
@@ -254,6 +256,35 @@ class DonorsMatching(object):
                 self._patients_graph.add_edge(subclass, genotype)
 
         return int_classes, subclasses
+
+    def count_GvH_HvG(
+            self,
+            pat_geno: Sequence[int],
+            don_geno: Sequence[int],
+    ) -> Tuple[int, int]:
+        """
+        Count GvH and HvG mismatches locus by locus by set‐difference.
+        Each locus is two slots in the genotype lists:
+          A: indices [0,1], B: [2,3], C: [4,5], DQB1: [6,7], DRB1: [8,9]
+        We drop any “N” (here encoded as 0 or None), then:
+          GvH = | patient_set – donor_set |
+          HvG = | donor_set – patient_set |
+        Sum over all five loci.
+        """
+        total_gvh = 0
+        total_hvg = 0
+
+        for i in range(0, 10, 2):
+            # build the allele sets, filtering out N/None/0
+            p_set = {a for a in (pat_geno[i], pat_geno[i + 1]) if a not in (None, 0)}
+            d_set = {a for a in (don_geno[i], don_geno[i + 1]) if a not in (None, 0)}
+
+            # how many the patient has that the donor doesn’t:
+            total_gvh += len(p_set - d_set)
+            # how many the donor has that the patient doesn’t:
+            total_hvg += len(d_set - p_set)
+
+        return total_gvh, total_hvg
 
     def create_patients_graph(self, f_patients: str):
         """
@@ -597,9 +628,16 @@ class DonorsMatching(object):
 
         add_donors["Matching_Probability"].append(match_prob)
         add_donors["Number_Of_Mismatches"].append(mm_number)
-        add_donors["Permissive/Non-Permissive"].append(
-            "-"
-        )  # TODO: add permissiveness algorithm
+
+        # compute GvH / HvG counts
+        pat = self.patients[patient]
+        don = self.get_most_common_genotype(donor)
+        gvh, hvg = self.count_GvH_HvG(pat, don)
+        add_donors["GvH_Mismatches"].append(gvh)
+        add_donors["HvG_Mismatches"].append(hvg)
+
+        add_donors["Permissive/Non-Permissive"].append("-")
+        # TODO: add permissiveness algorithm
 
         # add the other given fields to the results
         for field in donors_info:

@@ -3,7 +3,7 @@ py-graph-match
 
 Matching with Graph
 
-`grma`` is a package for finding HLA matches using graphs approach.
+`grma` is a package for finding HLA matches using graphs approach.
 The matching is based on [grim's](https://github.com/nmdp-bioinformatics/py-graph-imputation) imputation.
 
 
