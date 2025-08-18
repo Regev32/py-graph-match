@@ -112,7 +112,7 @@ class Graph(object):
     def neighbors_2nd(self, node):
         node_num = self._map_node_to_number[node]
         r0, r1 = self._graph.neighbors_2nd(node_num)
-        return r0[:-1], r1
+        return r0, r1
 
     def node_value_from_id(self, node_id: int) -> NODES_TYPES:
         """convert lol ID to node value"""

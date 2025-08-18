@@ -177,8 +177,8 @@ cdef class LolGraph:
                 neighbors_id[pointer] = self._neighbors_list[j]
                 pointer += 1
 
-        neighbors_value = np.zeros((num_of_neighbors_2nd - 1, 10), dtype=np.uint16)
-        for i in range(len(neighbors_id) - 1):
+        neighbors_value = np.zeros((num_of_neighbors_2nd, 10), dtype=np.uint16)
+        for i in range(len(neighbors_id)):
             neighbor_id = neighbors_id[i]
             arr = self.arr_node_value_from_id(neighbor_id)
             for j in range(10):

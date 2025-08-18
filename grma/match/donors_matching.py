@@ -627,7 +627,13 @@ class DonorsMatching(object):
         add_donors["Match_Between_Most_Commons_DRB"].append(compare_commons[4])
 
         add_donors["Matching_Probability"].append(match_prob)
-        add_donors["Number_Of_Mismatches"].append(mm_number)
+        
+        actual_mismatches = 0
+        for match_score in compare_commons:
+            if match_score != 2:
+                actual_mismatches += (2 - match_score)
+
+        add_donors["Number_Of_Mismatches"].append(actual_mismatches)
 
         # compute GvH / HvG counts
         pat = self.patients[patient]
