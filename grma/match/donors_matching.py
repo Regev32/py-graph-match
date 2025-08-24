@@ -20,8 +20,6 @@ from grma.utilities.utils import (
 
 DONORS_DB: pd.DataFrame = pd.DataFrame()
 ZEROS: HashableArray = HashableArray([0])
-ALLELES_IN_CLASS_I: int = 6
-ALLELES_IN_CLASS_II: int = 4
 
 
 def set_database(donors_db: pd.DataFrame = pd.DataFrame()):
@@ -43,22 +41,9 @@ def _init_results_df(donors_info):
         "HvG_Mismatches": [],
         "Number_Of_Mismatches": [],
         "Matching_Probability": [],
-        "Match_Probability_A_1": [],
-        "Match_Probability_A_2": [],
-        "Match_Probability_B_1": [],
-        "Match_Probability_B_2": [],
-        "Match_Probability_C_1": [],
-        "Match_Probability_C_2": [],
-        "Match_Probability_DQB1_1": [],
-        "Match_Probability_DQB1_2": [],
-        "Match_Probability_DRB1_1": [],
-        "Match_Probability_DRB1_2": [],
+        "Match_Probability": [],
         "Permissive/Non-Permissive": [],
-        "Match_Between_Most_Commons_A": [],
-        "Match_Between_Most_Commons_B": [],
-        "Match_Between_Most_Commons_C": [],
-        "Match_Between_Most_Commons_DQB": [],
-        "Match_Between_Most_Commons_DRB": [],
+        "Match_Between_Most_Commons": [],
     }
 
     donors_db_fields = DONORS_DB.columns.values.tolist()
@@ -68,17 +53,26 @@ def _init_results_df(donors_info):
     return pd.DataFrame(fields_in_results)
 
 
-def locuses_match_between_genos(geno1, geno2):
+def locuses_match_between_genos(geno_pat, geno_don):
     matches = []
-    for i in range(5):
-        a1, b1 = geno1[2 * i], geno1[2 * i + 1]
-        a2, b2 = geno2[2 * i], geno2[2 * i + 1]
+    total_gvh = 0
+    total_hvg = 0
+
+    for i in range(0, len(geno_pat), 2):
+        a1, b1 = geno_pat[i],   geno_pat[i + 1]
+        a2, b2 = geno_don[i],   geno_don[i + 1]
 
         s1 = int(a1 == a2) + int(b1 == b2)
         s2 = int(a1 == b2) + int(b1 == a2)
         matches.append(max(s1, s2))
 
-    return matches
+        p_set = {x for x in (a1, b1) if x not in (None, 0)}
+        d_set = {x for x in (a2, b2) if x not in (None, 0)}
+
+        total_gvh += len(p_set - d_set)  # patient has, donor lacks
+        total_hvg += len(d_set - p_set)  # donor has, patient lacks
+
+    return matches, total_gvh, total_hvg
 
 
 class DonorsMatching(object):
@@ -129,7 +123,7 @@ class DonorsMatching(object):
     ) -> List[float]:
         """Takes a donor ID and a genotype.
         Returns the probability of match for each allele"""
-        probs = [0 for _ in range(10)]
+        probs = [0 for _ in range(len(pat_geno))]
 
         for i, allele in enumerate(pat_geno):
             p = 0
@@ -150,7 +144,7 @@ class DonorsMatching(object):
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Takes an integer subclass.
         Returns the genotypes (ids and values) which are connected to it in the graph"""
-        return self._graph.class_neighbors(clss)
+        return self._graph.class_neighbors(clss, Len = len(self.patients[0]))
 
     def __find_donor_from_geno(self, geno_id: int) -> Sequence[int]:
         """Gets the LOL ID of a genotype.
@@ -218,6 +212,8 @@ class DonorsMatching(object):
 
     def __classes_and_subclasses_from_genotype(self, genotype: HashableArray):
         subclasses = []
+        ALLELES_IN_CLASS_I = -2*int(-len(genotype)/4-0.5)
+        ALLELES_IN_CLASS_II = len(genotype) - ALLELES_IN_CLASS_I
         classes = [genotype[:ALLELES_IN_CLASS_I], genotype[ALLELES_IN_CLASS_I:]]
         num_of_alleles_in_class = [ALLELES_IN_CLASS_I, ALLELES_IN_CLASS_II]
 
@@ -257,34 +253,7 @@ class DonorsMatching(object):
 
         return int_classes, subclasses
 
-    def count_GvH_HvG(
-            self,
-            pat_geno: Sequence[int],
-            don_geno: Sequence[int],
-    ) -> Tuple[int, int]:
-        """
-        Count GvH and HvG mismatches locus by locus by set‐difference.
-        Each locus is two slots in the genotype lists:
-          A: indices [0,1], B: [2,3], C: [4,5], DQB1: [6,7], DRB1: [8,9]
-        We drop any “N” (here encoded as 0 or None), then:
-          GvH = | patient_set – donor_set |
-          HvG = | donor_set – patient_set |
-        Sum over all five loci.
-        """
-        total_gvh = 0
-        total_hvg = 0
 
-        for i in range(0, 10, 2):
-            # build the allele sets, filtering out N/None/0
-            p_set = {a for a in (pat_geno[i], pat_geno[i + 1]) if a not in (None, 0)}
-            d_set = {a for a in (don_geno[i], don_geno[i + 1]) if a not in (None, 0)}
-
-            # how many the patient has that the donor doesn’t:
-            total_gvh += len(p_set - d_set)
-            # how many the donor has that the patient doesn’t:
-            total_hvg += len(d_set - p_set)
-
-        return total_gvh, total_hvg
 
     def create_patients_graph(self, f_patients: str):
         """
@@ -331,7 +300,8 @@ class DonorsMatching(object):
                 classes_by_patient[patient_id] = set()
 
             # sort alleles for each HLA-X
-            for x in range(0, 10, 2):
+            l = len(geno)
+            for x in range(0, l, 2):
                 geno[x : x + 2] = sorted(geno[x : x + 2])
 
             geno = HashableArray(geno)
@@ -382,14 +352,18 @@ class DonorsMatching(object):
                     genotypes_value,
                 ) = self.__find_genotype_candidates_from_subclass(subclass.subclass)
 
+                geno = genotypes_value[0]
+                ALLELES_IN_CLASS_I = -2*int(-len(geno)/4-0.5)
+                ALLELES_IN_CLASS_II = len(geno) - ALLELES_IN_CLASS_I
                 # Checks only the locuses that are not certain to match
                 if subclass.class_num == 0:
                     allele_range_to_check = np.array(
-                        [6, 8, subclass.allele_num], dtype=np.uint8
+                        [c for c in range(ALLELES_IN_CLASS_I, ALLELES_IN_CLASS_I + ALLELES_IN_CLASS_I - 2, 2)] + [subclass.allele_num],
+                        dtype=np.uint8
                     )
                 else:
                     allele_range_to_check = np.array(
-                        [0, 2, 4, subclass.allele_num], dtype=np.uint8
+                        [c for c in range(0, ALLELES_IN_CLASS_I, 2)] + [subclass.allele_num], dtype=np.uint8
                     )
 
                 # number of alleles that already match due to match in subclass
@@ -472,7 +446,7 @@ class DonorsMatching(object):
             # and each patient connects only to their own genos, so we wouldn't override the weight dict.
             # self._patients_graph.add_edge(patient_id, geno_id, weight={geno_num: [probability, 10]}) # AMIT DELETE
             self._genotype_candidates[patient_id][geno_id] = {
-                geno_num: (probability, 10)
+                geno_num: (probability, len(geno))
             }  # AMIT ADD
             # else:
             #     print(f"Missing 'geno_num' for patient_id: {patient_id}")
@@ -538,7 +512,7 @@ class DonorsMatching(object):
         ].items():  # AMIT ADD
             for prob, matches in genotype_matches.values():  # AMIT CHANGE
                 # match_info = (probability of patient's genotype, number of matches to patient's genotype)
-                if matches != 10 - mismatch:
+                if matches != len(self.patients[1]) - mismatch:
                     continue
 
                 # add the probabilities multiplication of the patient and all the donors that has this genotype
@@ -599,9 +573,10 @@ class DonorsMatching(object):
         mm_number: int,
     ) -> None:
         """add a donor to the matches dictionary"""
-
-        compare_commons = locuses_match_between_genos(
-            self.patients[patient], self.get_most_common_genotype(donor)
+        pat = self.patients[patient]
+        don = self.get_most_common_genotype(donor)
+        compare_commons, gvh, hvg = locuses_match_between_genos(
+            pat, don
         )
 
         add_donors["Patient_ID"].append(patient)
@@ -609,36 +584,16 @@ class DonorsMatching(object):
         allele_prob = self.probability_to_allele(
             don_id=donor, pat_geno=self.patients[patient]
         )
-        add_donors["Match_Probability_A_1"].append(allele_prob[0])
-        add_donors["Match_Probability_A_2"].append(allele_prob[1])
-        add_donors["Match_Probability_B_1"].append(allele_prob[2])
-        add_donors["Match_Probability_B_2"].append(allele_prob[3])
-        add_donors["Match_Probability_C_1"].append(allele_prob[4])
-        add_donors["Match_Probability_C_2"].append(allele_prob[5])
-        add_donors["Match_Probability_DQB1_1"].append(allele_prob[6])
-        add_donors["Match_Probability_DQB1_2"].append(allele_prob[7])
-        add_donors["Match_Probability_DRB1_1"].append(allele_prob[8])
-        add_donors["Match_Probability_DRB1_2"].append(allele_prob[9])
-
-        add_donors["Match_Between_Most_Commons_A"].append(compare_commons[0])
-        add_donors["Match_Between_Most_Commons_B"].append(compare_commons[1])
-        add_donors["Match_Between_Most_Commons_C"].append(compare_commons[2])
-        add_donors["Match_Between_Most_Commons_DQB"].append(compare_commons[3])
-        add_donors["Match_Between_Most_Commons_DRB"].append(compare_commons[4])
+        add_donors["Match_Probability"].append(allele_prob)
+        add_donors["Match_Between_Most_Commons"].append(compare_commons)
 
         add_donors["Matching_Probability"].append(match_prob)
-        
         actual_mismatches = 0
         for match_score in compare_commons:
             if match_score != 2:
                 actual_mismatches += (2 - match_score)
 
         add_donors["Number_Of_Mismatches"].append(actual_mismatches)
-
-        # compute GvH / HvG counts
-        pat = self.patients[patient]
-        don = self.get_most_common_genotype(donor)
-        gvh, hvg = self.count_GvH_HvG(pat, don)
         add_donors["GvH_Mismatches"].append(gvh)
         add_donors["HvG_Mismatches"].append(hvg)
 

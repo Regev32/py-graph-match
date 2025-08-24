@@ -12,8 +12,6 @@ from grma.match.graph_wrapper import Graph
 from grma.utilities.geno_representation import HashableArray
 from grma.utilities.utils import gl_string_to_integers, tuple_geno_to_int, print_time
 
-CLASS_I_END = 6
-
 
 class BuildMatchingGraph:
     """
@@ -111,7 +109,7 @@ class BuildMatchingGraph:
                     geno = gl_string_to_integers(geno)
 
                     # sort alleles for each HLA-X
-                    for x in range(0, 10, 2):
+                    for x in range(0, len(geno), 2):
                         geno[x : x + 2] = sorted(geno[x : x + 2])
                     geno = HashableArray(geno)
 
@@ -137,6 +135,7 @@ class BuildMatchingGraph:
                     # continue creation of classes and subclasses
                     if geno not in layers["GENOTYPE"]:
                         layers["GENOTYPE"].add(geno)
+                        CLASS_I_END = -2 * int(-len(geno)/4 - 0.5)
                         geno_class1 = tuple(geno[:CLASS_I_END])
                         geno_class2 = tuple(geno[CLASS_I_END:])
                         self._create_classes_edges(geno, geno_class1, layers)

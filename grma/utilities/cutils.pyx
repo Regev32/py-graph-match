@@ -83,7 +83,7 @@ cpdef np.ndarray[INT8, ndim=1] ccheck_similarity(np.ndarray[UINT16, ndim=1] pati
             if counted - count_similar > 3:
                 similarities[i] = -1
                 break
-        if 10 - count_similar > 3:
+        if len(donors_geno) - count_similar > 3:
             similarities[i] = -1
         else:
             similarities[i] = count_similar

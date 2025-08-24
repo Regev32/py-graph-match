@@ -8,6 +8,7 @@ import pickle
 import pandas as pd
 from grim import grim
 import csv
+import ast
 
 from grma.match import Graph as MatchingGraph
 from grma.match.donors_matching import DonorsMatching, _init_results_df
@@ -195,6 +196,9 @@ def find_matches(
 
     # the returned dictionary. {patient ID: pd.DataFrame(matches + features)}
     patients_results = {patient: None for patient in patients}
+    with open(imputation_filename, "r") as f:
+        line = f.readline().strip()
+        loci = list(dict.fromkeys([item for item in line.split(',')[1].replace('*', ',').replace('+', ',').replace('^', ',').replace(':', ',').split(',') if not item.isdigit() and item]))
 
     if patients:
         avg_build_time = (end_build_graph - start_build_graph) / len(patients)
@@ -217,6 +221,23 @@ def find_matches(
             patient, g_m, donors_info, threshold, cutoff, classes, subclasses
         )
 
+
+        match_Probability = results_df["Match_Probability"]
+        match_Between_Most_Commons = results_df["Match_Between_Most_Commons"]
+        Permissive = results_df["Permissive/Non-Permissive"]
+        df_new = results_df.drop(columns=['Match_Probability', 'Match_Between_Most_Commons', 'Permissive/Non-Permissive']).copy()
+
+        for idx, row in enumerate(match_Probability):
+            k = 0
+            for locus in loci:
+                for i in [1, 2]:
+                    df_new.loc[idx, f"Match_Probability_{locus}_{i}"] = row[k]
+                    k += 1
+        df_new['Permissive/Non-Permissive'] = Permissive
+        for idx, row in enumerate(match_Between_Most_Commons):
+            for l, locus in enumerate(loci):
+                df_new.loc[idx, f"Match_Between_Most_Commons_{locus}"] = row[l]
+        results_df = df_new.copy()
         end = time.time()
         patient_time = end - start + avg_build_time
 
@@ -239,7 +260,6 @@ def find_matches(
                     f"Saved Matching results for {patient} in "
                     f"{os.path.join(f'{output_dir}/search_{search_id}', f'Patient_{patient}.csv')}"
                 )
-
     return patients_results
 
 

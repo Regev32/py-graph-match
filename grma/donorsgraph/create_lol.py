@@ -76,8 +76,10 @@ class LolBuilder:
         arrays_start = free
         # map lol-ids to arrays
         # given an lol_id, the mapping will be map_number_to_arr_node[lol_id - arrays_start, :]
+        geno = layers['GENOTYPE'].pop()
+        layers['GENOTYPE'].add(geno)
         map_number_to_arr_node = np.zeros(
-            (len(layers["GENOTYPE"]), 10), dtype=np.uint16
+            (len(layers["GENOTYPE"]), len(geno)), dtype=np.uint16
         )
         for i, geno in tqdm(
             enumerate(layers["GENOTYPE"]),

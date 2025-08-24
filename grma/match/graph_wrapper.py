@@ -5,7 +5,6 @@ from os import PathLike
 from typing import Union
 
 import numpy as np
-
 from grma.utilities.geno_representation import HashableArray
 from grma.match.lol_graph import LolGraph
 
@@ -58,11 +57,10 @@ class Graph(object):
         ret = self._graph.get_edge_data(node1_num, node2_num)
         return default if ret == exception_val else ret
 
-    def class_neighbors(self, node: NODES_TYPES | int, search_lol_id: bool = False):
+    def class_neighbors(self, node: NODES_TYPES | int, search_lol_id: bool = False, Len: int = 10):
         node_num = self._map_node_to_number[node] if not search_lol_id else node
         neighbors_list = self._graph.neighbors_unweighted(node_num)
-
-        neighbors_list_values = np.ndarray([len(neighbors_list), 10], dtype=np.uint16)
+        neighbors_list_values = np.ndarray([len(neighbors_list), Len], dtype=np.uint16)
         for i, neighbor in enumerate(neighbors_list):
             neighbors_list_values[i, :] = self._graph.arr_node_value_from_id(neighbor)
 

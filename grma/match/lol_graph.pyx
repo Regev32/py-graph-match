@@ -155,6 +155,7 @@ cdef class LolGraph:
         cdef UINT16[:] arr
         cdef np.ndarray[UINT16, ndim=2] neighbors_value
         cdef UINT num_of_neighbors_2nd
+        cdef UINT loci_len
 
         idx = self._index_list[node]
         idx_end = self._index_list[node + 1]
@@ -162,7 +163,6 @@ cdef class LolGraph:
         neighbors_list_id = np.zeros(idx_end - idx, dtype=np.uint32)
         for i in range(idx, idx_end):
             neighbors_list_id[i - idx] = self._neighbors_list[i]
-
         num_of_neighbors_2nd = <UINT>self._weights_list[idx]
 
         neighbors_id = np.zeros(int(num_of_neighbors_2nd), dtype=np.uint32)
@@ -177,11 +177,12 @@ cdef class LolGraph:
                 neighbors_id[pointer] = self._neighbors_list[j]
                 pointer += 1
 
-        neighbors_value = np.zeros((num_of_neighbors_2nd, 10), dtype=np.uint16)
+        loci_len = <UINT> self._map_number_to_arr_node.shape[1]
+        neighbors_value = np.zeros((num_of_neighbors_2nd, loci_len), dtype=np.uint16)
         for i in range(len(neighbors_id)):
             neighbor_id = neighbors_id[i]
             arr = self.arr_node_value_from_id(neighbor_id)
-            for j in range(10):
+            for j in range(loci_len):
                 neighbors_value[i, j] = arr[j]
 
         return neighbors_id, neighbors_value
