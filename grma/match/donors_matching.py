@@ -144,7 +144,7 @@ class DonorsMatching(object):
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Takes an integer subclass.
         Returns the genotypes (ids and values) which are connected to it in the graph"""
-        return self._graph.class_neighbors(clss, Len = len(self.patients[0]))
+        return self._graph.class_neighbors(clss, Len = len(list(self.patients.values())[0]))
 
     def __find_donor_from_geno(self, geno_id: int) -> Sequence[int]:
         """Gets the LOL ID of a genotype.
@@ -357,14 +357,9 @@ class DonorsMatching(object):
                 ALLELES_IN_CLASS_II = len(geno) - ALLELES_IN_CLASS_I
                 # Checks only the locuses that are not certain to match
                 if subclass.class_num == 0:
-                    allele_range_to_check = np.array(
-                        [c for c in range(ALLELES_IN_CLASS_I, ALLELES_IN_CLASS_I + ALLELES_IN_CLASS_I - 2, 2)] + [subclass.allele_num],
-                        dtype=np.uint8
-                    )
+                    allele_range_to_check = np.array([x for x in range(0, len(geno)//2 + (len(geno)//2 & 1), 2)], dtype=np.uint8)
                 else:
-                    allele_range_to_check = np.array(
-                        [c for c in range(0, ALLELES_IN_CLASS_I, 2)] + [subclass.allele_num], dtype=np.uint8
-                    )
+                    allele_range_to_check = np.array([x for x in range(len(geno)//2 + (len(geno)//2 & 1), len(geno), 2)], dtype=np.uint8)
 
                 # number of alleles that already match due to match in subclass
                 matched_alleles: int = (
@@ -388,9 +383,9 @@ class DonorsMatching(object):
             desc="finding classes matching candidates",
             disable=not self.verbose,
         ):
-            if self._graph.in_nodes(clss):
+            if self._graph.in_nodes(clss[0]):
                 patient_genos = self._patients_graph.neighbors(
-                    clss
+                    clss[0]
                 )  # The patient's genotypes which might be match
                 (
                     genotypes_ids,
@@ -400,12 +395,14 @@ class DonorsMatching(object):
                 # Checks only the locuses that are not certain to match (the locuses of the other class)
                 # Class I appearances: 3 locuses = 6 alleles = 23/24 digits
                 # Class II appearances: 2 locuses = 4 alleles = 15/16 digits
-                if len(str(clss)) > 20:
-                    allele_range_to_check = np.array([6, 8], dtype=np.uint8)
-                    matched_alleles: int = 6
+                geno = list(self.patients.values())[0]
+                if clss[1] == 1:
+                    allele_range_to_check = np.array([x for x in range(len(geno)//2 + (len(geno)//2 & 1), len(geno), 2)], dtype=np.uint8)
+                    matched_alleles: int = len(geno)//2 + (len(geno)//2 & 1)
+
                 else:
-                    allele_range_to_check = np.array([0, 2, 4], dtype=np.uint8)
-                    matched_alleles: int = 4
+                    allele_range_to_check = np.array([x for x in range(0, len(geno)//2 + (len(geno)//2 & 1), 2)], dtype=np.uint8)
+                    matched_alleles: int = len(geno)//2 - (len(geno)//2 & 1)
 
                 # Compares the candidate to the patient's genotypes, and adds the match geno candidates to the graph.
                 self.__add_matched_genos_to_graph(
@@ -512,7 +509,7 @@ class DonorsMatching(object):
         ].items():  # AMIT ADD
             for prob, matches in genotype_matches.values():  # AMIT CHANGE
                 # match_info = (probability of patient's genotype, number of matches to patient's genotype)
-                if matches != len(self.patients[1]) - mismatch:
+                if matches != len(list(self.patients.values())[0]) - mismatch:
                     continue
 
                 # add the probabilities multiplication of the patient and all the donors that has this genotype

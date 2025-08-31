@@ -58,7 +58,7 @@ class Graph(object):
         return default if ret == exception_val else ret
 
     def class_neighbors(self, node: NODES_TYPES | int, search_lol_id: bool = False, Len: int = 10):
-        node_num = self._map_node_to_number[node] if not search_lol_id else node
+        node_num = self._map_node_to_number[node[0]] if not search_lol_id else node
         neighbors_list = self._graph.neighbors_unweighted(node_num)
         neighbors_list_values = np.ndarray([len(neighbors_list), Len], dtype=np.uint16)
         for i, neighbor in enumerate(neighbors_list):
