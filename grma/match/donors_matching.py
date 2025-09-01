@@ -214,12 +214,12 @@ class DonorsMatching(object):
         subclasses = []
         ALLELES_IN_CLASS_I = -2*int(-len(genotype)/4-0.5)
         ALLELES_IN_CLASS_II = len(genotype) - ALLELES_IN_CLASS_I
-        classes = [genotype[:ALLELES_IN_CLASS_I], genotype[ALLELES_IN_CLASS_I:]]
+        classes = [(genotype[:ALLELES_IN_CLASS_I], 0), (genotype[ALLELES_IN_CLASS_I:], 1)]
         num_of_alleles_in_class = [ALLELES_IN_CLASS_I, ALLELES_IN_CLASS_II]
 
-        int_classes = [tuple_geno_to_int(tuple(clss)) for clss in classes]
+        int_classes = [(tuple_geno_to_int(tuple(clss[0])), clss[1]) for clss in classes]
         for clss in int_classes:
-            self._patients_graph.add_edge(clss, genotype)
+            self._patients_graph.add_edge(clss[0], genotype)
 
         # class one is considered as 0.
         # class two is considered as 1.
@@ -229,14 +229,14 @@ class DonorsMatching(object):
                 # set the missing allele to always be the second allele in the locus
                 if k % 2 == 0:
                     sub = tuple_geno_to_int(
-                        classes[class_num][0:k] + ZEROS + classes[class_num][k + 1 :]
+                        classes[class_num][0][0:k] + ZEROS + classes[class_num][0][k + 1 :]
                     )
                 else:
                     sub = tuple_geno_to_int(
-                        classes[class_num][0 : k - 1]
+                        classes[class_num][0][0 : k - 1]
                         + ZEROS
-                        + classes[class_num][k - 1 : k]
-                        + classes[class_num][k + 1 :]
+                        + classes[class_num][0][k - 1 : k]
+                        + classes[class_num][0][k + 1 :]
                     )
 
                 # missing allele number is the index of the first allele of the locus the missing allele belongs to.
@@ -357,9 +357,9 @@ class DonorsMatching(object):
                 ALLELES_IN_CLASS_II = len(geno) - ALLELES_IN_CLASS_I
                 # Checks only the locuses that are not certain to match
                 if subclass.class_num == 0:
-                    allele_range_to_check = np.array([x for x in range(0, len(geno)//2 + (len(geno)//2 & 1), 2)], dtype=np.uint8)
+                    allele_range_to_check = np.array([x for x in range(len(geno)//2 + (len(geno)//2 & 1), len(geno), 2)] + [subclass.allele_num], dtype=np.uint8)
                 else:
-                    allele_range_to_check = np.array([x for x in range(len(geno)//2 + (len(geno)//2 & 1), len(geno), 2)], dtype=np.uint8)
+                    allele_range_to_check = np.array([x for x in range(0, len(geno)//2 + (len(geno)//2 & 1), 2)] + [subclass.allele_num], dtype=np.uint8)
 
                 # number of alleles that already match due to match in subclass
                 matched_alleles: int = (
@@ -396,7 +396,7 @@ class DonorsMatching(object):
                 # Class I appearances: 3 locuses = 6 alleles = 23/24 digits
                 # Class II appearances: 2 locuses = 4 alleles = 15/16 digits
                 geno = list(self.patients.values())[0]
-                if clss[1] == 1:
+                if clss[1] == 0:
                     allele_range_to_check = np.array([x for x in range(len(geno)//2 + (len(geno)//2 & 1), len(geno), 2)], dtype=np.uint8)
                     matched_alleles: int = len(geno)//2 + (len(geno)//2 & 1)
 

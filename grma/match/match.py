@@ -155,10 +155,6 @@ def find_matches(
     subclasses_by_patient, classes_by_patient = g_m.create_patients_graph(
         imputation_filename
     )
-    for patient_id, class_set in classes_by_patient.items():
-        classes_by_patient[patient_id] = {
-            (item, i) for i, item in enumerate(class_set)
-        }
 
     # wierd_edges = {}
     # for patient in g_m.patients:
